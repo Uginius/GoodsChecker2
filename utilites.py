@@ -53,3 +53,8 @@ def last_json_file():
     dates = jsf.keys()
     last = sorted(dates)[-1]
     return jsf[last]
+
+
+def check_dir(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)

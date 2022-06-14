@@ -1,9 +1,9 @@
 import json
 import os
 from bs4 import BeautifulSoup
-
 from config import shops
 from parsers.platform_parsers import FatherPlatformParser
+from utilites import check_dir
 
 
 class HtmlFilesParser:
@@ -14,7 +14,9 @@ class HtmlFilesParser:
         self.parser = None
         self.soup = None
         self.goods = {pl: {} for pl in shops}
-        self.json_file = f'json_results/{last_date}.json'
+        self.json_results_dir = f'json_results/'
+        check_dir(self.json_results_dir)
+        self.json_file = f'{self.json_results_dir}{last_date}.json'
 
     def run(self):
         for filename in self.files:
@@ -39,5 +41,6 @@ class HtmlFilesParser:
         self.goods[self.shop].update(par.parsed_dict)
 
     def write_json(self):
-        with open(self.json_file, 'w') as self.json_file:
-            json.dump(self.goods, self.json_file, ensure_ascii=False)
+        json_file = self.json_file
+        with open(json_file, 'w', encoding='utf8') as write_file:
+            json.dump(self.goods, write_file, ensure_ascii=False)

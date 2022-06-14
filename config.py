@@ -1,19 +1,21 @@
 import sys
+
 brand_list = ['ФОТОН', 'КОНТАКТ', 'РЕКОРД', 'SAFELINE']
 
 wait_time = 3
 shops = {
     # 'akson': 'https://akson.ru/',
-    'baucenter': 'https://baucenter.ru/',
-    # 'dns': 'https://www.dns-shop.ru/',
+    # 'baucenter': 'https://baucenter.ru/',
+    'dns': 'https://www.dns-shop.ru/',
     # 'eltsnab': 'https://eltsnab.ru/',
     # 'etm': 'https://www.etm.ru/',
     # 'maxidom': 'https://www.maxidom.ru/',
-    'sdvor': 'https://www.sdvor.com/moscow',
+    # 'sdvor': 'https://www.sdvor.com/moscow',
     # 'votonia': 'https://www.votonia.ru/'
 }
 blocklist = {
     'baucenter': [],
+    'dns': ['контакт', 'safeline', 'рекорд'],
     'sdvor': ['контакт', 'рекорд'],
 }
 
@@ -34,11 +36,12 @@ selenium_arguments = [
     '--disable-blink-features=AutomationControlled'
 ]
 
-chromedriver_linux_path = 'drivers/chromedriver_linux64_99.0.4844.51/chromedriver'
 match sys.platform:
     case 'linux':
-        browser_path = chromedriver_linux_path
+        browser_path = 'drivers/chromedriver_linux64_99.0.4844.51/chromedriver'
     case 'darwin':
         browser_path = 'drivers/chromedriver'
+    case 'win32':
+        browser_path = 'drivers/chromedriver.exe'
     case _:
         print("ERROR: can't found selenium driver")

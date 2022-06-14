@@ -7,6 +7,8 @@ def parse_platform_product(platform, html_product):
     match platform:
         case 'baucenter':
             product = bau_goods_parser(html_product)
+        case 'dns':
+            product = dns_goods_parser(html_product)
         case 'sdvor':
             product = sdvor_goods_parser(html_product)
     return product
@@ -68,4 +70,30 @@ def sdvor_goods_parser(html_product):
         stars = rating.find('sd-star-rating')['style'].split(':')[1][:-1]
         cp.vote_rating = float(stars)
         cp.vote_qt = int(rating.text.split()[0])
+    return cp
+
+
+def dns_goods_parser(html_product):
+    cp = Product()
+    cp.id = int(html_product['data-code'])
+    cp.name = html_product.find('span').text
+    cp.url = f"https://www.dns-shop.ru{html_product.find('a')['href']}"
+    try:
+        cp.status = html_product.find('div', class_='order-avail-wrap').text.strip()
+    except AttributeError:
+        cp.status = 'Отсутствуют в продаже'
+    try:
+        price = html_product.find('div', class_='product-buy__price').text.split('₽')[0].split()
+        cp.price = int(''.join(price))
+    except AttributeError:
+        cp.price = 'Продажи прекращены'
+    if 'ФОТОН' in cp.name.upper():
+        cp.trade_mark = 'ФОТОН'
+    votes = html_product.find('a', class_='catalog-product__rating ui-link ui-link_black')
+    cp.vote_rating = votes['data-rating']
+    cp.vote_rating = float(cp.vote_rating)
+    cp.vote_qt = votes.text.strip()
+    if cp.vote_qt == 'нет отзывов':
+        cp.vote_qt = 0
+    cp.vote_qt = int(cp.vote_qt)
     return cp

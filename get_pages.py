@@ -18,7 +18,7 @@ class PageGetter:
         self.current_url = None
         self.date = datetime.now().strftime("%d-%m-%Y")
         self.html_dir = f'htmls/{self.date}/'
-        self.pag = None
+        self.has_pagination = 0
         self.html_data = None
         self.soup = None
         self.page_pos = None
@@ -29,7 +29,7 @@ class PageGetter:
         for self.cur_phrase in self.phrases:
             self.page_pos = 1
             self.get_first_page()
-            if self.pag:
+            if self.has_pagination:
                 self.get_other_pages()
         if self.browser:
             self.browser.close()
@@ -47,9 +47,13 @@ class PageGetter:
     def generate_url(self):
         shop_url = shops[self.shop]
         match self.shop:
+            case 'akson':
+                self.current_url = f'https://akson.ru/search/?q={self.cur_phrase}'
             case 'baucenter':
                 pagination = f'&PAGEN_1={self.page_pos}' if self.page_pos > 1 else ''
                 self.current_url = f'{shop_url}search/?q={self.cur_phrase}{pagination}'
+            case 'dns':
+                self.current_url = f'https://www.dns-shop.ru/search/?q={self.cur_phrase}&p={self.page_pos}'
             case 'sdvor':
                 self.current_url = f'https://www.sdvor.com/moscow/search/{self.cur_phrase}'
         print('connect to', self.current_url)
@@ -59,8 +63,9 @@ class PageGetter:
         self.soup = BeautifulSoup(self.html_data, 'lxml')
         try:
             self.get_last_page_number()
-        except IndexError:
-            self.pag = None
+        except Exception as ex:
+            print(ex)
+            self.has_pagination = 0
 
     def get_page(self):
         self.generate_url()
@@ -71,7 +76,7 @@ class PageGetter:
         write_html(self.html_data, f'{self.html_dir}/{self.shop}_{self.cur_phrase}_{self.page_pos:03d}.html')
 
     def get_other_pages(self):
-        for self.page_pos in range(2, self.pag + 1):
+        for self.page_pos in range(2, self.has_pagination + 1):
             self.get_page()
 
     def scroll_down(self):
@@ -95,13 +100,12 @@ class PageGetter:
 
     def get_last_page_number(self):
         match self.shop:
+            case 'akson':
+                pass
             case 'baucenter':
-                self.last_page_number_bau()
+                self.has_pagination = int(self.soup.find('nav', class_='pagination').find_all('a')[-2].text)
+            case 'dns':
+                pag_block = self.soup.find('ul', class_='pagination-widget__pages')
+                self.has_pagination = int(pag_block.find_all('li')[-1]['data-page-number'])
             case 'sdvor':
-                self.pag = None
-
-    def last_page_number_bau(self):
-        try:
-            self.pag = int(self.soup.find('nav', class_='pagination').find_all('a')[-2].text)
-        except AttributeError:
-            self.pag = 1
+                self.has_pagination = 0
