@@ -2,7 +2,7 @@ import json
 import math
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Alignment, Font
-
+from parsers.parse_rating_maxidom import MaxidomRatingUpdate
 from parsers.parse_rating_votonia import VotoniaRatingUpdate
 from utilites import check_dir
 
@@ -80,10 +80,17 @@ class XlsConverter:
                 need_votes_cell.fill = PatternFill("solid", fgColor='ffcd75')
 
     def check_empty_platform_ratings(self, shop):
+        updater = None
         match shop:
             case 'votonia':
-                votonia_goods_updater = VotoniaRatingUpdate(self.goods_dict[shop])
-                votonia_goods_updater.run()
-                self.goods_dict[shop] = votonia_goods_updater.out_goods_data()
+                updater = VotoniaRatingUpdate(self.goods_dict[shop])
             case 'maxidom':
-                pass
+                updater = MaxidomRatingUpdate(self.goods_dict[shop])
+        if updater:
+            updater.run()
+            self.goods_dict[shop] = updater.out_goods_data()
+            self.write_json()
+
+    def write_json(self):
+        with open(self.load_filename, 'w', encoding='utf8') as write_file:
+            json.dump(self.goods_dict, write_file, ensure_ascii=False)
