@@ -1,6 +1,8 @@
 import json
 import math
 from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Alignment, Font
+
 from utilites import check_dir
 
 
@@ -33,15 +35,38 @@ class XlsConverter:
                 if rating > 4 and qt > 1:
                     need = 0
                 else:
-                    need = math.ceil(qt * abs(4.1 - rating)) if rating else 2
+                    need = math.ceil(qt * abs(4 - rating)) if rating else 2
                 data = [shop, int(shop_id), merch['brand'], merch['name'], merch['url'], merch['status'],
                         merch['price'], rating, qt, need]
                 sw.append(data)
+                self.conditions_and_cell_styles()
 
     def initiate_workbook(self):
-        title = ['Магазин', 'shop id', 'brand', 'Наименование', 'url', 'статус',
-                 'price', 'рейтинг', 'количество голосов', 'требуется оценок']
+        title = ['shop', 'shop id', 'brand', 'name', 'url', 'status',
+                 'price', 'rating', 'votes', 'need']
         ws = self.workbook.active
         ws.append(title)
-        print(ws[1])
-        ws.column_dimensions['D'].width = 30
+        ws.column_dimensions['D'].width = 40
+        ws.column_dimensions['E'].width = 30
+        ws.column_dimensions['F'].width = 25
+        for cell in ws[1]:
+            cell.fill = PatternFill("solid", fgColor='b3b3b3')
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    def conditions_and_cell_styles(self):
+        sw = self.workbook.active
+        cur_row = sw.max_row
+        url_cell = sw[f'E{cur_row}']
+        url_cell.font = Font(size=7)
+        rating_cell = sw[f'H{cur_row}']
+        votes_cell = sw[f'I{cur_row}']
+        need_votes_cell = sw[f'J{cur_row}']
+        rating_cell.alignment = Alignment(horizontal='center', vertical='center')
+        votes_cell.alignment = Alignment(horizontal='center', vertical='center')
+        need_votes_cell.alignment = Alignment(horizontal='center', vertical='center')
+        if rating_cell.value == 0:
+            rating_cell.fill = PatternFill("solid", fgColor='ffe4e1')
+        elif rating_cell.value < 4:
+            rating_cell.fill = PatternFill("solid", fgColor='E6B8B7')
+        if need_votes_cell.value > 0:
+            need_votes_cell.fill = PatternFill("solid", fgColor='ffcd75')
