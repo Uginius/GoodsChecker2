@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 from config import selenium_arguments, browser_path, blocklist, search_phrases, wait_time, shops
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-
 from utilites import write_html
 
 
@@ -22,12 +21,13 @@ class PageGetter:
         self.html_data = None
         self.soup = None
         self.page_pos = None
+        self.first_page_wait_time = 0
 
     def run(self):
         self.check_html_dir()
         self.initiate_browser()
         for self.cur_phrase in self.phrases:
-            self.page_pos = 1
+            self.page_pos = 0
             self.get_first_page()
             if self.has_pagination:
                 self.get_other_pages()
@@ -47,6 +47,8 @@ class PageGetter:
     def generate_url(self):
         shop_url = shops[self.shop]
         query, pos = self.cur_phrase, self.page_pos
+        if query == 'фотон':
+            query = '%D1%84%D0%BE%D1%82%D0%BE%D0%BD'
         match self.shop:
             case 'akson':
                 self.current_url = f'https://akson.ru/search/?q={query}'
@@ -54,7 +56,9 @@ class PageGetter:
                 pagination = f'&PAGEN_1={pos}' if pos > 1 else ''
                 self.current_url = f'{shop_url}search/?q={query}{pagination}'
             case 'dns':
-                self.current_url = f'https://www.dns-shop.ru/search/?q={query}&p={pos}'
+                'https://www.dns-shop.ru/search/?q=%D1%84%D0%BE%D1%82%D0%BE%D0%BD'
+                end = f'&p={pos}' if pos > 1 else ''
+                self.current_url = f'https://www.dns-shop.ru/search/?q={query}{end}'
             case 'maxidom':
                 link = f'https://www.maxidom.ru/search/catalog/?q={query}&category_search=0&amount=12'
                 self.current_url = link + f'&PAGEN_2={pos}' if pos > 1 else link
@@ -62,10 +66,13 @@ class PageGetter:
                 self.current_url = f'https://www.sdvor.com/moscow/search/{query}'
             case 'votonia':
                 self.current_url = f'https://www.votonia.ru/search/{query}/'
-        print('connect to', self.current_url)
+        print('connect to', self.current_url, 'Request:', self.cur_phrase)
 
     def get_first_page(self):
+        if self.shop == 'dns':
+            self.first_page_wait_time = 10
         self.get_page()
+        self.first_page_wait_time = 0
         self.soup = BeautifulSoup(self.browser.page_source, 'lxml')
         try:
             self.get_last_page_number()
@@ -76,6 +83,7 @@ class PageGetter:
     def get_page(self):
         self.generate_url()
         self.browser.get(url=self.current_url)
+        time.sleep(self.first_page_wait_time)
         self.scroll_down()
         time.sleep(wait_time)
         write_html(self.browser.page_source, f'{self.html_dir}/{self.shop}_{self.cur_phrase}_{self.page_pos:03d}.html')

@@ -1,12 +1,15 @@
 import time
 from random import randint
+from threading import Thread
+
 import requests
 from bs4 import BeautifulSoup
 from config import req_headers
 
 
-class RatingParser:
+class RatingParser(Thread):
     def __init__(self, shop_goods):
+        super().__init__()
         self.goods = shop_goods
         self.merch = None
 

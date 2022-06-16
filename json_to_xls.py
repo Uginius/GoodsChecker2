@@ -2,8 +2,7 @@ import json
 import math
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Alignment, Font
-from parsers.parse_rating_maxidom import MaxidomRatingUpdate
-from parsers.parse_rating_votonia import VotoniaRatingUpdate
+from parsers.parse_rating import VotoniaRatingUpdate, MaxidomRatingUpdate
 from utilites import check_dir
 
 
@@ -13,10 +12,12 @@ class XlsConverter:
         self.goods_dict = {}
         self.workbook = Workbook()
         self.date = filename.split('.')[0]
+        self.updaters = {}
 
     def run(self):
         self.open_json()
         self.initiate_workbook()
+        self.update_empty_platform_ratings()
         self.combine_data_to_write()
         check_dir('xls_results')
         self.workbook.save(f"xls_results/{self.date}.xlsx")
@@ -28,7 +29,6 @@ class XlsConverter:
     def combine_data_to_write(self):
         sw = self.workbook.active
         for shop in self.goods_dict:
-            self.check_empty_platform_ratings(shop)
             shop_goods = self.goods_dict[shop]
             for shop_id in shop_goods:
                 merch = shop_goods[shop_id]
@@ -75,21 +75,29 @@ class XlsConverter:
                 rating_cell.fill = PatternFill("solid", fgColor='ffe4e1')
             elif rating_cell.value < 4:
                 rating_cell.fill = PatternFill("solid", fgColor='E6B8B7')
+            elif rating_cell.value > 4:
+                rating_cell.fill = PatternFill("solid", fgColor='7CFC00')
         if need_votes_cell.value:
             if need_votes_cell.value > 0:
                 need_votes_cell.fill = PatternFill("solid", fgColor='ffcd75')
 
-    def check_empty_platform_ratings(self, shop):
-        updater = None
-        match shop:
-            case 'votonia':
-                updater = VotoniaRatingUpdate(self.goods_dict[shop])
-            case 'maxidom':
-                updater = MaxidomRatingUpdate(self.goods_dict[shop])
-        if updater:
-            updater.run()
+    def update_empty_platform_ratings(self):
+        for shop in self.goods_dict:
+            match shop:
+                case 'votonia':
+                    print('-' * 50, 'updating votonia', '-' * 50)
+                    votonia = VotoniaRatingUpdate(self.goods_dict[shop])
+                    votonia.start()
+                    self.updaters[shop] = votonia
+                case 'maxidom':
+                    print('-' * 50, 'updating maxidom', '-' * 50)
+                    maxidom = MaxidomRatingUpdate(self.goods_dict[shop])
+                    maxidom.start()
+                    self.updaters[shop] = maxidom
+        for shop, updater in self.updaters.items():
+            updater.join()
             self.goods_dict[shop] = updater.out_goods_data()
-            self.write_json()
+        self.write_json()
 
     def write_json(self):
         with open(self.load_filename, 'w', encoding='utf8') as write_file:

@@ -26,6 +26,6 @@ def convert_json_to_xls():
 
 
 if __name__ == '__main__':
-    # get_pages()
+    get_pages()
     parse_pages()
     convert_json_to_xls()
