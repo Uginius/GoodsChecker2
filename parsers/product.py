@@ -4,6 +4,7 @@ import json
 class Product:
     def __init__(self):
         self.id = None
+        self.rosel_id = None
         self.shop_name = None
         self.name = ''
         self.url = None
@@ -18,16 +19,18 @@ class Product:
         return self.id, self.name, self.url, self.status, self.price
 
     def json_items(self):
-        return {self.id: {
-            'brand': self.trade_mark,
-            'name': self.name,
-            'url': self.url,
-            'status': self.status,
-            'price': self.price,
-            'vote_rating': self.vote_rating,
-            'vote_qt': self.vote_qt,
-            # 'index': self.index
-        }
+        return {
+            self.id: {
+                'brand': self.trade_mark,
+                'name': self.name,
+                'url': self.url,
+                'status': self.status,
+                'price': self.price,
+                'vote_rating': self.vote_rating,
+                'vote_qt': self.vote_qt,
+                'rosel_id': self.rosel_id,
+                # 'index': self.index
+            }
         }
 
     def json_items_write(self):
