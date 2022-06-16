@@ -46,25 +46,31 @@ class PageGetter:
 
     def generate_url(self):
         shop_url = shops[self.shop]
+        query, pos = self.cur_phrase, self.page_pos
         match self.shop:
             case 'akson':
-                self.current_url = f'https://akson.ru/search/?q={self.cur_phrase}'
+                self.current_url = f'https://akson.ru/search/?q={query}'
             case 'baucenter':
-                pagination = f'&PAGEN_1={self.page_pos}' if self.page_pos > 1 else ''
-                self.current_url = f'{shop_url}search/?q={self.cur_phrase}{pagination}'
+                pagination = f'&PAGEN_1={pos}' if pos > 1 else ''
+                self.current_url = f'{shop_url}search/?q={query}{pagination}'
             case 'dns':
-                self.current_url = f'https://www.dns-shop.ru/search/?q={self.cur_phrase}&p={self.page_pos}'
+                self.current_url = f'https://www.dns-shop.ru/search/?q={query}&p={pos}'
+            case 'maxidom':
+                link = f'https://www.maxidom.ru/search/catalog/?q={query}&category_search=0&amount=12'
+                self.current_url = link + f'&PAGEN_2={pos}' if pos > 1 else link
             case 'sdvor':
-                self.current_url = f'https://www.sdvor.com/moscow/search/{self.cur_phrase}'
+                self.current_url = f'https://www.sdvor.com/moscow/search/{query}'
+            case 'votonia':
+                self.current_url = f'https://www.votonia.ru/search/{query}/'
         print('connect to', self.current_url)
 
     def get_first_page(self):
         self.get_page()
-        self.soup = BeautifulSoup(self.html_data, 'lxml')
+        self.soup = BeautifulSoup(self.browser.page_source, 'lxml')
         try:
             self.get_last_page_number()
         except Exception as ex:
-            print(ex)
+            print('getting last page number error...', ex)
             self.has_pagination = 0
 
     def get_page(self):
@@ -72,8 +78,7 @@ class PageGetter:
         self.browser.get(url=self.current_url)
         self.scroll_down()
         time.sleep(wait_time)
-        self.html_data = self.browser.page_source
-        write_html(self.html_data, f'{self.html_dir}/{self.shop}_{self.cur_phrase}_{self.page_pos:03d}.html')
+        write_html(self.browser.page_source, f'{self.html_dir}/{self.shop}_{self.cur_phrase}_{self.page_pos:03d}.html')
 
     def get_other_pages(self):
         for self.page_pos in range(2, self.has_pagination + 1):
@@ -81,10 +86,14 @@ class PageGetter:
 
     def scroll_down(self):
         match self.shop:
+            case 'akson':
+                self.scroll_down_akson()
             case 'baucenter':
                 self.scroll_down_classic()
             case 'sdvor':
                 pass
+            case 'votonia':
+                self.scroll_down_votonia()
 
     def scroll_down_classic(self):
         last_height = self.browser.execute_script("return document.body.scrollHeight")
@@ -98,6 +107,37 @@ class PageGetter:
             last_height = new_height
         self.browser.execute_script(f"window.scrollTo(0, {last_height - 1500});")
 
+    def scroll_down_akson(self):
+        last_height = self.browser.execute_script("return document.body.scrollHeight")
+        self.browser.execute_script(f"window.scrollTo(0, {last_height});")
+        time.sleep(1)
+        for i in range(1, 5):
+            self.browser.execute_script(f"window.scrollTo(0, {last_height - 500 * i});")
+            time.sleep(1)
+        while True:
+            self.browser.execute_script(f"window.scrollTo(0, document.body.scrollHeight);")
+            new_height = self.browser.execute_script("return document.body.scrollHeight")
+            time.sleep(1)
+            if new_height == last_height:
+                break
+            last_height = new_height
+
+    def scroll_down_votonia(self):
+        last_height = self.browser.execute_script("return document.body.scrollHeight")
+        self.browser.execute_script(f"window.scrollTo(0, {last_height});")
+        while True:
+            try:
+                self.browser.find_element_by_css_selector('.pager-info-block').click()
+            except Exception as ex:
+                print(ex)
+            time.sleep(1)
+            self.browser.execute_script(f"window.scrollTo(0, document.body.scrollHeight);")
+            new_height = self.browser.execute_script("return document.body.scrollHeight")
+            time.sleep(1)
+            if new_height == last_height:
+                break
+            last_height = new_height
+
     def get_last_page_number(self):
         match self.shop:
             case 'akson':
@@ -107,5 +147,8 @@ class PageGetter:
             case 'dns':
                 pag_block = self.soup.find('ul', class_='pagination-widget__pages')
                 self.has_pagination = int(pag_block.find_all('li')[-1]['data-page-number'])
+            case 'maxidom':
+                li = self.soup.find('div', class_='pager-catalogue__search').find_all('li')
+                self.has_pagination = int(li[-2].text.strip())
             case 'sdvor':
                 self.has_pagination = 0
