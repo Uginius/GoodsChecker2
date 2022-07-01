@@ -28,6 +28,8 @@ def bau_goods_parser(html_product):
     cp.trade_mark = tm
     cp.id = int(html_product['data-article'])
     cp.name = html_product['data-name']
+    if 'Стул' in cp.name:
+        return None
     link = html_product.find('a', attrs={'data-gtm-event': 'product_click'})['href']
     cp.url = f"https://baucenter.ru{link}"
     try:
