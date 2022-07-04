@@ -1,8 +1,8 @@
+import datetime
 import sys
 
 brand_list = ['ФОТОН', 'КОНТАКТ', 'РЕКОРД', 'SAFELINE']
 
-wait_time = 3
 shops = {
     'akson': 'https://akson.ru/',
     'baucenter': 'https://baucenter.ru/',
@@ -21,11 +21,14 @@ blocklist = {
 }
 
 search_phrases = ['фотон', 'контакт', 'рекорд', 'safeline']
+date_pattern = "%Y-%m-%d"
+today = datetime.datetime.now().strftime(date_pattern)
+dir_date_template = r'202\d-\d{2}-\d{2}'
 
 match sys.platform:
     case 'linux':
-        browser_path = 'drivers/chromedriver_linux64_99.0.4844.51/chromedriver'
-        user_agent = None
+        browser_path = 'chromedriver_linux64/chromedriver'
+        user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.53 Safari/537.36'
     case 'darwin':
         browser_path = 'drivers/chromedriver'
         user_agent = None
@@ -39,3 +42,4 @@ match sys.platform:
 selenium_arguments = [f'user-agent={user_agent}', '--disable-blink-features=AutomationControlled']
 req_headers = {'accept': '*/*', 'accept-encoding': 'gzip, deflate, br',
                'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7', 'user-agent': user_agent}
+

@@ -1,8 +1,7 @@
 import time
+import requests
 from random import randint
 from threading import Thread
-
-import requests
 from bs4 import BeautifulSoup
 from config import req_headers
 

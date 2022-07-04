@@ -10,7 +10,9 @@ def get_pages():
     pages_from_shop_list = [PageGetter(platform) for platform in shops]
     for page in pages_from_shop_list:
         print(f'****** start to get pages from {page.shop}')
-        page.run()
+        page.start()
+    for page in pages_from_shop_list:
+        page.join()
 
 
 @time_track
@@ -26,6 +28,6 @@ def convert_json_to_xls():
 
 
 if __name__ == '__main__':
-    get_pages()
+    # get_pages()
     parse_pages()
     convert_json_to_xls()

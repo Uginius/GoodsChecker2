@@ -3,6 +3,7 @@ import os
 import re
 import time
 from datetime import datetime
+from config import dir_date_template, date_pattern
 
 
 def time_track(func):
@@ -11,7 +12,7 @@ def time_track(func):
         result = func(*args, **kwargs)
         ended_at = time.time()
         elapsed = round(ended_at - started_at, 4)
-        print(f'\nФункция работала {elapsed} секунд(ы)')
+        print(f'\nIt takes {elapsed:.3f} sec, or {elapsed/60:.3f} min')
         return result
 
     return surrogate
@@ -30,26 +31,25 @@ def write_html(src, filename):
 
 def get_last_dir():
     pages_dir_from_os = os.listdir('htmls')
-    dir_date_template = r'\d{2}-\d{2}-202\d'
     loaded_dirs = []
     for el in pages_dir_from_os:
-        check_dir = re.findall(dir_date_template, el)
+        checking_dir = re.findall(dir_date_template, el)
         try:
-            if check_dir:
-                dir_in_list = datetime.strptime(el, '%d-%m-%Y')
+            if checking_dir:
+                dir_in_list = datetime.strptime(el, date_pattern)
                 loaded_dirs.append(dir_in_list)
         except ValueError as ex:
             print(ex)
-    final_dir = sorted(loaded_dirs)[-1].strftime('%d-%m-%Y')
+    final_dir = sorted(loaded_dirs)[-1].strftime(date_pattern)
     return final_dir
 
 
 def last_json_file():
     jsf = {}
     for filename in os.listdir("json_results"):
-        find_date = re.findall(r'\d{2}-\d{2}-202\d', filename)
+        find_date = re.findall(dir_date_template, filename)
         if find_date:
-            jsf[datetime.strptime(find_date[0], '%d-%m-%Y')] = filename
+            jsf[datetime.strptime(find_date[0], date_pattern)] = filename
     dates = jsf.keys()
     last = sorted(dates)[-1]
     return jsf[last]

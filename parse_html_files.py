@@ -10,9 +10,7 @@ class HtmlFilesParser:
     def __init__(self, last_date):
         self.last_dir = 'htmls/' + last_date
         self.files = os.listdir(self.last_dir)
-        self.shop = None
-        self.parser = None
-        self.soup = None
+        self.shop, self.parser, self.soup = None, None, None
         self.goods = {pl: {} for pl in shops}
         self.json_results_dir = f'json_results/'
         check_dir(self.json_results_dir)

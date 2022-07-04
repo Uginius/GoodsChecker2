@@ -60,6 +60,7 @@ def sdvor_goods_parser(html_product):
     cp.url = 'https://www.sdvor.com' + link['href']
     try:
         price = html_product.find('div', class_='price').text.strip().split()[:-1]
+        price = price.split('₽')[0] if '₽' in price else price
         cp.price = float(''.join(price))
     except AttributeError:
         cp.price = None

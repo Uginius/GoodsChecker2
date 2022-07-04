@@ -1,22 +1,27 @@
 import os
+import random
 import time
-from datetime import datetime
+import urllib.parse
+from threading import Thread
 from bs4 import BeautifulSoup
-from config import selenium_arguments, browser_path, blocklist, search_phrases, wait_time, shops
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+
+from config import selenium_arguments, browser_path, blocklist, search_phrases, shops, today
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from utilites import write_html
 
 
-class PageGetter:
+class PageGetter(Thread):
     def __init__(self, platform):
+        super().__init__()
         self.shop = platform
         self.browser = None
         self.phrases = list(set(search_phrases) - set(blocklist[platform]))
         self.cur_phrase = None
         self.current_url = None
-        self.date = datetime.now().strftime("%d-%m-%Y")
-        self.html_dir = f'htmls/{self.date}/'
+        self.html_dir = f'htmls/{today}/'
         self.has_pagination = 0
         self.html_data = None
         self.soup = None
@@ -27,7 +32,7 @@ class PageGetter:
         self.check_html_dir()
         self.initiate_browser()
         for self.cur_phrase in self.phrases:
-            self.page_pos = 0
+            self.page_pos, self.has_pagination = 0, 0
             self.get_first_page()
             if self.has_pagination:
                 self.get_other_pages()
@@ -45,18 +50,18 @@ class PageGetter:
         self.browser = webdriver.Chrome(service=Service(executable_path=browser_path), options=options)
 
     def generate_url(self):
-        shop_url = shops[self.shop]
-        query, pos = self.cur_phrase, self.page_pos
-        if query == 'фотон':
-            query = '%D1%84%D0%BE%D1%82%D0%BE%D0%BD'
-        match self.shop:
+        platform = self.shop
+        shop_url = shops[platform]
+        pos = self.page_pos
+        phrase = self.cur_phrase
+        query = urllib.parse.quote_plus(phrase, safe='', encoding=None, errors=None)
+        match platform:
             case 'akson':
                 self.current_url = f'https://akson.ru/search/?q={query}'
             case 'baucenter':
                 pagination = f'&PAGEN_1={pos}' if pos > 1 else ''
                 self.current_url = f'{shop_url}search/?q={query}{pagination}'
             case 'dns':
-                'https://www.dns-shop.ru/search/?q=%D1%84%D0%BE%D1%82%D0%BE%D0%BD'
                 end = f'&p={pos}' if pos > 1 else ''
                 self.current_url = f'https://www.dns-shop.ru/search/?q={query}{end}'
             case 'maxidom':
@@ -66,7 +71,8 @@ class PageGetter:
                 self.current_url = f'https://www.sdvor.com/moscow/search/{query}'
             case 'votonia':
                 self.current_url = f'https://www.votonia.ru/search/{query}/'
-        print('connect to', self.current_url, 'Request:', self.cur_phrase)
+        pag = self.has_pagination if self.has_pagination else 'FF'
+        print(f'{platform:>9} {phrase:8} {pos:02}/{pag :02}, connect to {self.current_url}')
 
     def get_first_page(self):
         if self.shop == 'dns':
@@ -77,7 +83,7 @@ class PageGetter:
         try:
             self.get_last_page_number()
         except Exception as ex:
-            print('getting last page number error...', ex)
+            print(f'{self.shop}, getting last page number error...', ex)
             self.has_pagination = 0
 
     def get_page(self):
@@ -85,7 +91,7 @@ class PageGetter:
         self.browser.get(url=self.current_url)
         time.sleep(self.first_page_wait_time)
         self.scroll_down()
-        time.sleep(wait_time)
+        time.sleep(random.randint(3, 10))
         write_html(self.browser.page_source, f'{self.html_dir}/{self.shop}_{self.cur_phrase}_{self.page_pos:03d}.html')
 
     def get_other_pages(self):
@@ -101,18 +107,14 @@ class PageGetter:
             case 'sdvor':
                 pass
             case 'votonia':
-                self.scroll_down_votonia()
+                self.scroll_down_votonia(wait=2)
+        time.sleep(1)
+        self.browser.execute_script(f"window.scrollTo(0, 0);")
+        time.sleep(2)
 
     def scroll_down_classic(self):
         last_height = self.browser.execute_script("return document.body.scrollHeight")
-        self.browser.execute_script(f"window.scrollTo(0, {last_height});")
-        while True:
-            self.browser.execute_script(f"window.scrollTo(0, document.body.scrollHeight);")
-            new_height = self.browser.execute_script("return document.body.scrollHeight")
-            time.sleep(0.5)
-            if new_height == last_height:
-                break
-            last_height = new_height
+        self.simple_to_bottom()
         self.browser.execute_script(f"window.scrollTo(0, {last_height - 1500});")
 
     def scroll_down_akson(self):
@@ -122,26 +124,22 @@ class PageGetter:
         for i in range(1, 5):
             self.browser.execute_script(f"window.scrollTo(0, {last_height - 500 * i});")
             time.sleep(1)
-        while True:
-            self.browser.execute_script(f"window.scrollTo(0, document.body.scrollHeight);")
-            new_height = self.browser.execute_script("return document.body.scrollHeight")
-            time.sleep(1)
-            if new_height == last_height:
-                break
-            last_height = new_height
+        self.simple_to_bottom(wait=3)
 
-    def scroll_down_votonia(self):
+    def scroll_down_votonia(self, wait=10):
         last_height = self.browser.execute_script("return document.body.scrollHeight")
         self.browser.execute_script(f"window.scrollTo(0, {last_height});")
         while True:
             try:
-                self.browser.find_element_by_css_selector('.pager-info-block').click()
+                more_button = self.browser.find_elements_by_class_name("pager-info-block")
+                # self.browser.find_element_by_css_selector('pager-info-block').click()
+                more_button.click()
+                time.sleep(wait)
             except Exception as ex:
-                print(ex)
-            time.sleep(1)
+                print(self.shop, ex)
             self.browser.execute_script(f"window.scrollTo(0, document.body.scrollHeight);")
             new_height = self.browser.execute_script("return document.body.scrollHeight")
-            time.sleep(1)
+            time.sleep(wait)
             if new_height == last_height:
                 break
             last_height = new_height
@@ -160,3 +158,15 @@ class PageGetter:
                 self.has_pagination = int(li[-2].text.strip())
             case 'sdvor':
                 self.has_pagination = 0
+
+    def simple_to_bottom(self, wait=1):
+        last_height = self.browser.execute_script("return document.body.scrollHeight")
+        self.browser.execute_script(f"window.scrollTo(0, {last_height});")
+        time.sleep(wait)
+        while True:
+            self.browser.execute_script(f"window.scrollTo(0, document.body.scrollHeight);")
+            new_height = self.browser.execute_script("return document.body.scrollHeight")
+            time.sleep(wait)
+            if new_height == last_height:
+                break
+            last_height = new_height
